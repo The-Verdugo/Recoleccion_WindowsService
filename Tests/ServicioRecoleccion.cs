@@ -161,6 +161,7 @@ namespace Tests
                         var existingRecordsToUpdate = db_des.Re_Data_Reference.Where(r => existingKeys.Contains(r.DocEntry)).ToList();
                         foreach (var record in existingRecordsToUpdate)
                         {
+                            record.fecha_version = DateTime.Today;
                             record.version_data = 1;
                         }
 
@@ -227,7 +228,14 @@ namespace Tests
                             {
                                 id = 0,
                                 DocEntry = source.DocEntry,
-                                // Resto de las propiedades...
+                                CreateDate = source.CreateDate,
+                                DesAlmDes = source.DesAlmDes,
+                                Factura = source.Factura,
+                                Paqueteria = source.Paqueteria,
+                                Prioridad = source.Prioridad,
+                                Rotulo = source.Rotulo,
+                                U_CardName = source.U_CardName,
+                                Valida_Picking = source.Valida_Picking,
                                 version_data = nuevaVersion,
                                 fecha_version = DateTime.Today
                             }));
