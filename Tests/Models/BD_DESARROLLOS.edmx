@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="DesarrollosGVIModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2008" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+    <Schema Namespace="DesarrollosGVIModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2008" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="Re_Data_Reference">
           <Key>
             <PropertyRef Name="id" />
@@ -21,12 +21,51 @@
           <Property Name="Prioridad" Type="int" />
           <Property Name="version_data" Type="int" />
           <Property Name="fecha_version" Type="datetime" />
+          <Property Name="Valida_Packing" Type="nvarchar" MaxLength="10" />
+        </EntityType>
+        <!--Errores durante la generación:
+advertencia 6002: La tabla o vista 'DesarrollosGVI.dbo.RE_TABLE_DATA' no tiene definida ninguna clave principal. Se ha inferido la clave y la definición se creado como una vista o tabla de solo lectura.-->
+        <EntityType Name="RE_TABLE_DATA">
+          <Key>
+            <PropertyRef Name="DocEntry" />
+            <PropertyRef Name="Valida_Picking" />
+            <PropertyRef Name="Valida_Packing" />
+            <PropertyRef Name="version_data" />
+            <PropertyRef Name="fecha_version" />
+          </Key>
+          <Property Name="DocEntry" Type="int" Nullable="false" />
+          <Property Name="Factura" Type="nvarchar" MaxLength="100" />
+          <Property Name="DesAlmDes" Type="nvarchar" MaxLength="111" />
+          <Property Name="U_CardName" Type="nvarchar" MaxLength="100" />
+          <Property Name="CreateDate" Type="datetime" />
+          <Property Name="Valida_Picking" Type="varchar" MaxLength="2" Nullable="false" />
+          <Property Name="Valida_Packing" Type="varchar" MaxLength="2" Nullable="false" />
+          <Property Name="Rotulo" Type="smallint" />
+          <Property Name="Paqueteria" Type="nvarchar" MaxLength="50" />
+          <Property Name="Prioridad" Type="int" />
+          <Property Name="version_data" Type="int" Nullable="false" />
+          <Property Name="fecha_version" Type="datetime" Nullable="false" />
         </EntityType>
         <EntityContainer Name="DesarrollosGVIModelStoreContainer">
           <EntitySet Name="Re_Data_Reference" EntityType="Self.Re_Data_Reference" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="RE_TABLE_DATA" EntityType="Self.RE_TABLE_DATA" store:Type="Views" store:Schema="dbo">
+            <DefiningQuery>SELECT 
+    [RE_TABLE_DATA].[DocEntry] AS [DocEntry], 
+    [RE_TABLE_DATA].[Factura] AS [Factura], 
+    [RE_TABLE_DATA].[DesAlmDes] AS [DesAlmDes], 
+    [RE_TABLE_DATA].[U_CardName] AS [U_CardName], 
+    [RE_TABLE_DATA].[CreateDate] AS [CreateDate], 
+    [RE_TABLE_DATA].[Valida_Picking] AS [Valida_Picking], 
+    [RE_TABLE_DATA].[Valida_Packing] AS [Valida_Packing], 
+    [RE_TABLE_DATA].[Rotulo] AS [Rotulo], 
+    [RE_TABLE_DATA].[Paqueteria] AS [Paqueteria], 
+    [RE_TABLE_DATA].[Prioridad] AS [Prioridad], 
+    [RE_TABLE_DATA].[version_data] AS [version_data], 
+    [RE_TABLE_DATA].[fecha_version] AS [fecha_version]
+    FROM [dbo].[RE_TABLE_DATA] AS [RE_TABLE_DATA]</DefiningQuery>
+          </EntitySet>
         </EntityContainer>
-      </Schema>
-    </edmx:StorageModels>
+      </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="DesarrollosGVIModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -46,10 +85,33 @@
           <Property Name="Prioridad" Type="Int32" />
           <Property Name="version_data" Type="Int32" />
           <Property Name="fecha_version" Type="DateTime" Precision="3" />
+          <Property Name="Valida_Packing" Type="String" MaxLength="10" FixedLength="false" Unicode="true" />
         </EntityType>
         <EntityContainer Name="DesarrollosGVIEntities" annotation:LazyLoadingEnabled="true">
           <EntitySet Name="Re_Data_Reference" EntityType="Self.Re_Data_Reference" />
+          <EntitySet Name="RE_TABLE_DATA" EntityType="DesarrollosGVIModel.RE_TABLE_DATA" />
         </EntityContainer>
+        <EntityType Name="RE_TABLE_DATA">
+          <Key>
+            <PropertyRef Name="DocEntry" />
+            <PropertyRef Name="Valida_Picking" />
+            <PropertyRef Name="Valida_Packing" />
+            <PropertyRef Name="version_data" />
+            <PropertyRef Name="fecha_version" />
+          </Key>
+          <Property Name="DocEntry" Type="Int32" Nullable="false" />
+          <Property Name="Factura" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="DesAlmDes" Type="String" MaxLength="111" FixedLength="false" Unicode="true" />
+          <Property Name="U_CardName" Type="String" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="CreateDate" Type="DateTime" Precision="3" />
+          <Property Name="Valida_Picking" Type="String" Nullable="false" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="Valida_Packing" Type="String" Nullable="false" MaxLength="2" FixedLength="false" Unicode="false" />
+          <Property Name="Rotulo" Type="Int16" />
+          <Property Name="Paqueteria" Type="String" MaxLength="50" FixedLength="false" Unicode="true" />
+          <Property Name="Prioridad" Type="Int32" />
+          <Property Name="version_data" Type="Int32" Nullable="false" />
+          <Property Name="fecha_version" Type="DateTime" Nullable="false" Precision="3" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -59,6 +121,7 @@
           <EntitySetMapping Name="Re_Data_Reference">
             <EntityTypeMapping TypeName="DesarrollosGVIModel.Re_Data_Reference">
               <MappingFragment StoreEntitySet="Re_Data_Reference">
+                <ScalarProperty Name="Valida_Packing" ColumnName="Valida_Packing" />
                 <ScalarProperty Name="id" ColumnName="id" />
                 <ScalarProperty Name="DocEntry" ColumnName="DocEntry" />
                 <ScalarProperty Name="Factura" ColumnName="Factura" />
@@ -71,6 +134,24 @@
                 <ScalarProperty Name="Prioridad" ColumnName="Prioridad" />
                 <ScalarProperty Name="version_data" ColumnName="version_data" />
                 <ScalarProperty Name="fecha_version" ColumnName="fecha_version" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="RE_TABLE_DATA">
+            <EntityTypeMapping TypeName="DesarrollosGVIModel.RE_TABLE_DATA">
+              <MappingFragment StoreEntitySet="RE_TABLE_DATA">
+                <ScalarProperty Name="fecha_version" ColumnName="fecha_version" />
+                <ScalarProperty Name="version_data" ColumnName="version_data" />
+                <ScalarProperty Name="Prioridad" ColumnName="Prioridad" />
+                <ScalarProperty Name="Paqueteria" ColumnName="Paqueteria" />
+                <ScalarProperty Name="Rotulo" ColumnName="Rotulo" />
+                <ScalarProperty Name="Valida_Packing" ColumnName="Valida_Packing" />
+                <ScalarProperty Name="Valida_Picking" ColumnName="Valida_Picking" />
+                <ScalarProperty Name="CreateDate" ColumnName="CreateDate" />
+                <ScalarProperty Name="U_CardName" ColumnName="U_CardName" />
+                <ScalarProperty Name="DesAlmDes" ColumnName="DesAlmDes" />
+                <ScalarProperty Name="Factura" ColumnName="Factura" />
+                <ScalarProperty Name="DocEntry" ColumnName="DocEntry" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

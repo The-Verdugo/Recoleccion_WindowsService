@@ -11,8 +11,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using Tests.Clases;
 using Tests.Models;
@@ -23,7 +21,7 @@ namespace Tests
     {
         
         #region Variables
-        private System.Windows.Forms.Timer timer;
+        private Timer timer;
         private string logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log", "Log.txt");
         private static FirebaseConfig config = new FirebaseConfig
         {
@@ -45,41 +43,10 @@ namespace Tests
         {
             try
             {
-                timer = new System.Windows.Forms.Timer();
+                timer = new Timer();
                 timer.Interval = Convert.ToInt32(ConfigurationManager.AppSettings["Intervalo"]);
                 timer.Enabled = true;
                 this.timer.Tick += new EventHandler(EventoTemporizador);
-
-                // Inicia el timer en un hilo diferente al de la interfaz de usuario
-                ThreadPool.QueueUserWorkItem(_ =>
-                {
-                    while (true)
-                    {
-                        // Espera el intervalo de tiempo
-                        Thread.Sleep(timer.Interval);
-
-                        // Ejecuta el código en el hilo de la interfaz de usuario
-                        BeginInvoke(new Action(() =>
-                        {
-                            try
-                            {
-                                var response = ProcesingData();
-
-                                if (response.version > 0)
-                                {
-                                    _client.Set("DatabaseVersion/", response);
-                                }
-
-                                AgregarRegistro($"{DateTime.Now}: La base de datos se sincronizó con éxito.\r\n");
-                            }
-                            catch (Exception ex)
-                            {
-                                AgregarRegistro($"{DateTime.Now}: Error al sincronizar la base de datos: {ex.Message}\r\n{ex.StackTrace}\r\n");
-                            }
-                        }));
-                    }
-                });
-
                 AgregarRegistro("Servicio iniciado con éxito");
                 MessageBox.Show("Servicio iniciado", "Ok");
             }
@@ -89,16 +56,21 @@ namespace Tests
             }
         }
 
-
-
         private void AgregarRegistro(string mensaje)
         {
-            // Agregar un registro al TextBox
-            txtLog.AppendText($"{DateTime.Now:HH:mm:ss} - {mensaje}\r\n");
+            try
+            {
+                // Agregar un registro al TextBox
+                txtLog.AppendText($"{DateTime.Now:HH:mm:ss} - {mensaje}\r\n");
 
-            // Desplazar el cursor al final del TextBox para mostrar el último mensaje
-            txtLog.SelectionStart = txtLog.Text.Length;
-            txtLog.ScrollToCaret();
+                // Desplazar el cursor al final del TextBox para mostrar el último mensaje
+                txtLog.SelectionStart = txtLog.Text.Length;
+                txtLog.ScrollToCaret();
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         private void EventoTemporizador(object sender, EventArgs e)
@@ -120,7 +92,7 @@ namespace Tests
             }
         }
 
-        private ResponseVersion ProcesingData()
+       private ResponseVersion ProcesingData()
         {
             try
             {
@@ -135,8 +107,8 @@ namespace Tests
                     if (version == null || version.fecha_version == null || version.fecha_version.Value.Date != DateTime.Today)
                     {
                         var existingKeys = db_des.Re_Data_Reference.Select(r => r.DocEntry).ToList();
-
-                        var sourceDataList = db.fn_API_Get_DataSource()
+                 
+                        var sourceDataList = db_des.RE_TABLE_DATA.ToList()
                             .Select(source => new Re_Data_Reference
                             {
                                 id = 0,
@@ -149,6 +121,7 @@ namespace Tests
                                 Rotulo = source.Rotulo,
                                 U_CardName = source.U_CardName,
                                 Valida_Picking = source.Valida_Picking,
+                                Valida_Packing = source.Valida_Packing,
                                 version_data = 1,
                                 fecha_version = DateTime.Today
                             })
@@ -178,23 +151,58 @@ namespace Tests
                     }
                     else
                     {
-                        var dataFromQuery = db.fn_API_Get_DataSource().ToList();
+
+                        // Obtener los DocEntry duplicados
+                        var duplicatedDocEntries = db_des.Re_Data_Reference
+                            .GroupBy(entry => entry.DocEntry)
+                            .Where(group => group.Count() > 1)
+                            .Select(group => group.Key)
+                            .ToList();
+
+                        // Eliminar registros duplicados dejando solo el más reciente
+                        var recordsToDelete = db_des.Re_Data_Reference
+                            .Where(entry => duplicatedDocEntries.Contains(entry.DocEntry))
+                            .GroupBy(entry => entry.DocEntry)
+                            .SelectMany(group => group.OrderByDescending(entry => entry.version_data).Skip(1)) // Omitir el más reciente
+                            .ToList();
+
+                        db_des.Re_Data_Reference.RemoveRange(recordsToDelete);
+                        db_des.SaveChanges();
+
+                        var dataFromQuery = db.fn_API_Get_DataRecoleccion().ToList();
                         var dataTableOfSources = db_des.Re_Data_Reference.ToList();
 
                         var changes = dataFromQuery
                             .Join(dataTableOfSources, x => x.DocEntry, y => y.DocEntry, (x, y) => new { Source = x, Destination = y })
                             .Where(pair => pair.Destination != null &&
                                             (pair.Source.Valida_Picking != pair.Destination.Valida_Picking ||
+                                             pair.Source.Valida_Packing != pair.Destination.Valida_Packing ||
                                              pair.Source.Paqueteria != pair.Destination.Paqueteria ||
                                              pair.Source.Rotulo != pair.Destination.Rotulo))
                             .ToList();
 
                         var elementsToAdd = dataFromQuery
                             .Where(source => !dataTableOfSources.Any(destination => destination.DocEntry == source.DocEntry))
+                            .Select(source => new Re_Data_Reference
+                            {
+                                id = 0,
+                                DocEntry = source.DocEntry,
+                                CreateDate = source.CreateDate,
+                                DesAlmDes = source.DesAlmDes,
+                                Factura = source.Factura,
+                                Paqueteria = source.Paqueteria,
+                                Prioridad = source.Prioridad,
+                                Rotulo = source.Rotulo,
+                                U_CardName = source.U_CardName,
+                                Valida_Picking = source.Valida_Picking,
+                                Valida_Packing = source.Valida_Packing,
+                                version_data = (int)(version.version_data + 1),
+                                fecha_version = DateTime.Today
+                            })
                             .ToList();
 
                         var elementsToDelete = dataTableOfSources
-                            .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry))
+                            .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry || source.version_data != version.version_data))
                             .ToList();
 
                         hayCambios = changes.Any() || elementsToAdd.Any() || elementsToDelete.Any();
@@ -212,34 +220,26 @@ namespace Tests
 
                             foreach (var change in changes)
                             {
-                                var existingRecord = db_des.Re_Data_Reference.FirstOrDefault(r => r.DocEntry == change.Destination.DocEntry);
-                                if (existingRecord != null)
+                                var existingRecords = dataTableOfSources
+                                    .Where(x => x.DocEntry == change.Destination.DocEntry)
+                                    .OrderByDescending(x => x.version_data)
+                                    .FirstOrDefault();
+
+                                if (existingRecords != null)
                                 {
-                                    existingRecord.Valida_Picking = change.Source.Valida_Picking;
-                                    existingRecord.Paqueteria = change.Source.Paqueteria;
-                                    existingRecord.Prioridad = change.Source.Prioridad;
-                                    existingRecord.Rotulo = change.Source.Rotulo;
-                                    existingRecord.version_data = nuevaVersion;
-                                    existingRecord.fecha_version = DateTime.Today;
+                                    existingRecords.Valida_Picking = change.Source.Valida_Picking;
+                                    existingRecords.Valida_Packing = change.Source.Valida_Packing;
+                                    existingRecords.Paqueteria = change.Source.Paqueteria;
+                                    existingRecords.Prioridad = change.Source.Prioridad;
+                                    existingRecords.Rotulo = change.Source.Rotulo;
+                                    existingRecords.version_data = nuevaVersion;
+                                    existingRecords.fecha_version = DateTime.Today;
+                                    // Marcar el objeto como modificado
+                                    db_des.Entry(existingRecords).State = EntityState.Modified;
                                 }
                             }
 
-                            db_des.Re_Data_Reference.AddRange(elementsToAdd.Select(source => new Re_Data_Reference
-                            {
-                                id = 0,
-                                DocEntry = source.DocEntry,
-                                CreateDate = source.CreateDate,
-                                DesAlmDes = source.DesAlmDes,
-                                Factura = source.Factura,
-                                Paqueteria = source.Paqueteria,
-                                Prioridad = source.Prioridad,
-                                Rotulo = source.Rotulo,
-                                U_CardName = source.U_CardName,
-                                Valida_Picking = source.Valida_Picking,
-                                version_data = nuevaVersion,
-                                fecha_version = DateTime.Today
-                            }));
-
+                            db_des.Re_Data_Reference.AddRange(elementsToAdd);
                             db_des.Re_Data_Reference.RemoveRange(elementsToDelete);
 
                             db_des.SaveChanges();

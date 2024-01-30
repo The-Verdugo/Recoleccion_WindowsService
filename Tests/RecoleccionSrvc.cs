@@ -28,6 +28,7 @@ namespace Tests
         private FirebaseClient _client = new FirebaseClient(config);
         private GVIEntities db = new GVIEntities();
         private DesarrollosGVIEntities db_des = new DesarrollosGVIEntities();
+        private static readonly object lockObject = new object();
         #endregion
 
         public RecoleccionSrvc()
@@ -46,171 +47,222 @@ namespace Tests
         }
 
         #region Metodos_Privados
-        private async void IniciarServicio()
+
+        private void IniciarServicio()
         {
             try
             {
-                string logDirectory = Path.GetDirectoryName(logFilePath);
-
-                // Verificar si la carpeta existe, y si no, crearla
-                if (!Directory.Exists(logDirectory))
-                {
-                    Directory.CreateDirectory(logDirectory);
-                }
-
                 int intervalo = Convert.ToInt32(ConfigurationManager.AppSettings["Intervalo"]);
 
-                while (true)
-                {
-                    // Espera el intervalo de tiempo
-                    await Task.Delay(intervalo);
+                // Cambiar Timer a System.Threading.Timer
+                timer = new Timer(EventoTemporizador, null, 0, intervalo);
 
-                    // Ejecuta el código de la tarea
-                    EjecutarTarea(null);
-                }
+                AgregarRegistro("Servicio iniciado con éxito");
             }
             catch (Exception ex)
             {
-                File.AppendAllText(logFilePath, $"{DateTime.Now}: Ocurrió un error al iniciar el servicio: {ex.Message}\r\n{ex.StackTrace}\r\n");
+                AgregarRegistro("Error: " + ex.Message);
             }
         }
 
-        private async void EjecutarTarea(object state)
+
+        private void AgregarRegistro(string mensaje)
         {
             try
             {
-                var response = await Task.Run(() => ProcesingData());
+                using (StreamWriter writer = new StreamWriter(logFilePath, true))
+                {
+                    writer.WriteLine($"{DateTime.Now}: {mensaje}");
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        private void EventoTemporizador(object sender)
+        {
+            try
+            {
+                var response = ProcesingData();
 
                 if (response.version > 0)
                 {
                     _client.Set("DatabaseVersion/", response);
                 }
-
-                File.AppendAllText(logFilePath, $"{DateTime.Now}: La base se sincronizó con éxito.\r\n");
             }
             catch (Exception ex)
             {
-                File.AppendAllText(logFilePath, $"{DateTime.Now}: Error al sincronizar la base de datos: {ex.Message}\r\n{ex.StackTrace}\r\n");
+                AgregarRegistro($"{DateTime.Now}: Error al sincronizar la base de datos: {ex.Message}\r\n{ex.StackTrace}\r\n");
             }
         }
 
-        private async Task<ResponseVersion> ProcesingData()
+        private ResponseVersion ProcesingData()
         {
             try
             {
                 bool hayCambios = false;
                 ResponseVersion response = new ResponseVersion();
-
-                var version = await db_des.Re_Data_Reference
+                using (var db_des = new DesarrollosGVIEntities())
+                {
+                    var version = db_des.Re_Data_Reference
                     .Select(c => new { c.version_data, c.fecha_version })
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefault();
 
-                if (version == null || version.fecha_version == null || version.fecha_version.Value.Date != DateTime.Today)
-                {
-                    var existingKeys = await db_des.Re_Data_Reference.Select(r => r.DocEntry).ToListAsync();
-
-                    var sourceDataList = await db.fn_API_Get_DataSource()
-                        .Select(source => new Re_Data_Reference
-                        {
-                            id = 0,
-                            DocEntry = source.DocEntry,
-                            // Resto de las propiedades...
-                            version_data = 1,
-                            fecha_version = DateTime.Today
-                        })
-                        .ToListAsync();
-
-                    var keysToDelete = existingKeys.Except(sourceDataList.Select(r => r.DocEntry)).ToList();
-                    var recordsToDelete = await db_des.Re_Data_Reference.Where(r => keysToDelete.Contains(r.DocEntry)).ToListAsync();
-                    db_des.Re_Data_Reference.RemoveRange(recordsToDelete);
-
-                    var existingRecordsToUpdate = await db_des.Re_Data_Reference.Where(r => existingKeys.Contains(r.DocEntry)).ToListAsync();
-                    foreach (var record in existingRecordsToUpdate)
+                    if (version == null || version.fecha_version == null || version.fecha_version.Value.Date != DateTime.Today)
                     {
-                        record.version_data = 1;
-                    }
+                        var existingKeys = db_des.Re_Data_Reference.Select(r => r.DocEntry).ToList();
 
-                    var recordsToInsert = sourceDataList.Where(r => !existingKeys.Contains(r.DocEntry)).ToList();
-                    db_des.Re_Data_Reference.AddRange(recordsToInsert);
-                    await db_des.SaveChangesAsync();
-
-                    hayCambios = keysToDelete.Any() || recordsToInsert.Any() || existingRecordsToUpdate.Any();
-
-                    response.fecha = DateTime.Today.ToString("dd-MM-yyyy");
-                    response.version = 1;
-                }
-                else
-                {
-                    var dataFromQuery = await db.fn_API_Get_DataSource().ToListAsync();
-                    var dataTableOfSources = await db_des.Re_Data_Reference.ToListAsync();
-
-                    var changes = dataFromQuery
-                        .Join(dataTableOfSources, x => x.DocEntry, y => y.DocEntry, (x, y) => new { Source = x, Destination = y })
-                        .Where(pair => pair.Destination != null &&
-                                        (pair.Source.Valida_Picking != pair.Destination.Valida_Picking ||
-                                         pair.Source.Paqueteria != pair.Destination.Paqueteria ||
-                                         pair.Source.Rotulo != pair.Destination.Rotulo))
-                        .ToList();
-
-                    var elementsToAdd = dataFromQuery
-                        .Where(source => !dataTableOfSources.Any(destination => destination.DocEntry == source.DocEntry))
-                        .ToList();
-
-                    var elementsToDelete = dataTableOfSources
-                        .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry))
-                        .ToList();
-
-                    hayCambios = changes.Any() || elementsToAdd.Any() || elementsToDelete.Any();
-
-                    if (hayCambios)
-                    {
-                        int nuevaVersion = (int)(version.version_data + 1);
-
-                        var unchangedElements = dataTableOfSources.Except(changes.Select(change => change.Destination));
-                        foreach (var unchangedElement in unchangedElements)
-                        {
-                            unchangedElement.version_data = nuevaVersion;
-                            unchangedElement.fecha_version = DateTime.Today;
-                        }
-
-                        foreach (var change in changes)
-                        {
-                            var existingRecord = await db_des.Re_Data_Reference.FirstOrDefaultAsync(r => r.DocEntry == change.Destination.DocEntry);
-                            if (existingRecord != null)
+                        var sourceDataList = db_des.RE_TABLE_DATA
+                            .Select(source => new Re_Data_Reference
                             {
-                                existingRecord.Valida_Picking = change.Source.Valida_Picking;
-                                existingRecord.Paqueteria = change.Source.Paqueteria;
-                                existingRecord.Prioridad = change.Source.Prioridad;
-                                existingRecord.Rotulo = change.Source.Rotulo;
-                                existingRecord.version_data = nuevaVersion;
-                                existingRecord.fecha_version = DateTime.Today;
-                            }
+                                id = 0,
+                                DocEntry = source.DocEntry,
+                                CreateDate = source.CreateDate,
+                                DesAlmDes = source.DesAlmDes,
+                                Factura = source.Factura,
+                                Paqueteria = source.Paqueteria,
+                                Prioridad = source.Prioridad,
+                                Rotulo = source.Rotulo,
+                                U_CardName = source.U_CardName,
+                                Valida_Picking = source.Valida_Picking,
+                                Valida_Packing = source.Valida_Packing,
+                                version_data = 1,
+                                fecha_version = DateTime.Today
+                            })
+                            .ToList();
+
+                        var keysToDelete = existingKeys.Except(sourceDataList.Select(r => r.DocEntry)).ToList();
+                        var recordsToDelete = db_des.Re_Data_Reference.Where(r => keysToDelete.Contains(r.DocEntry)).ToList();
+                        db_des.Re_Data_Reference.RemoveRange(recordsToDelete);
+
+                        var existingRecordsToUpdate = db_des.Re_Data_Reference.Where(r => existingKeys.Contains(r.DocEntry)).ToList();
+                        foreach (var record in existingRecordsToUpdate)
+                        {
+                            record.fecha_version = DateTime.Today;
+                            record.version_data = 1;
                         }
 
-                        db_des.Re_Data_Reference.AddRange(elementsToAdd.Select(source => new Re_Data_Reference
-                        {
-                            id = 0,
-                            DocEntry = source.DocEntry,
-                            // Resto de las propiedades...
-                            version_data = nuevaVersion,
-                            fecha_version = DateTime.Today
-                        }));
+                        var recordsToInsert = sourceDataList.Where(r => !existingKeys.Contains(r.DocEntry)).ToList();
 
-                        db_des.Re_Data_Reference.RemoveRange(elementsToDelete);
-                        await db_des.SaveChangesAsync();
+                        db_des.Re_Data_Reference.AddRange(recordsToInsert);
 
-                        response.version = nuevaVersion;
+                        db_des.SaveChanges();
+
+                        hayCambios = keysToDelete.Any() || recordsToInsert.Any() || existingRecordsToUpdate.Any();
+
                         response.fecha = DateTime.Today.ToString("dd-MM-yyyy");
+                        response.version = 1;
                     }
                     else
                     {
-                        response.version = version.version_data.Value;
-                        response.fecha = version.fecha_version.Value.ToString("dd-MM-yyyy");
-                    }
-                }
 
-                string mensaje = hayCambios ? "Se detectaron cambios." : "No hay cambios.";
-                return response;
+                        // Obtener los DocEntry duplicados
+                        var duplicatedDocEntries = db_des.Re_Data_Reference
+                            .GroupBy(entry => entry.DocEntry)
+                            .Where(group => group.Count() > 1)
+                            .Select(group => group.Key)
+                            .ToList();
+
+                        // Eliminar registros duplicados dejando solo el más reciente
+                        var recordsToDelete = db_des.Re_Data_Reference
+                            .Where(entry => duplicatedDocEntries.Contains(entry.DocEntry))
+                            .GroupBy(entry => entry.DocEntry)
+                            .SelectMany(group => group.OrderByDescending(entry => entry.version_data).Skip(1)) // Omitir el más reciente
+                            .ToList();
+
+                        db_des.Re_Data_Reference.RemoveRange(recordsToDelete);
+                        db_des.SaveChanges();
+
+                        var dataFromQuery = db.fn_API_Get_DataRecoleccion().ToList();
+                        var dataTableOfSources = db_des.Re_Data_Reference.ToList();
+
+                        var changes = dataFromQuery
+                            .Join(dataTableOfSources, x => x.DocEntry, y => y.DocEntry, (x, y) => new { Source = x, Destination = y })
+                            .Where(pair => pair.Destination != null &&
+                                            (pair.Source.Valida_Picking != pair.Destination.Valida_Picking ||
+                                             pair.Source.Valida_Packing != pair.Destination.Valida_Packing ||
+                                             pair.Source.Paqueteria != pair.Destination.Paqueteria ||
+                                             pair.Source.Rotulo != pair.Destination.Rotulo))
+                            .ToList();
+
+                        var elementsToAdd = dataFromQuery
+                            .Where(source => !dataTableOfSources.Any(destination => destination.DocEntry == source.DocEntry))
+                            .Select(source => new Re_Data_Reference
+                            {
+                                id = 0,
+                                DocEntry = source.DocEntry,
+                                CreateDate = source.CreateDate,
+                                DesAlmDes = source.DesAlmDes,
+                                Factura = source.Factura,
+                                Paqueteria = source.Paqueteria,
+                                Prioridad = source.Prioridad,
+                                Rotulo = source.Rotulo,
+                                U_CardName = source.U_CardName,
+                                Valida_Picking = source.Valida_Picking,
+                                Valida_Packing = source.Valida_Packing,
+                                version_data = (int)(version.version_data + 1),
+                                fecha_version = DateTime.Today
+                            })
+                            .ToList();
+
+                        var elementsToDelete = dataTableOfSources
+                            .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry || source.version_data != version.version_data))
+                            .ToList();
+
+                        hayCambios = changes.Any() || elementsToAdd.Any() || elementsToDelete.Any();
+
+                        if (hayCambios)
+                        {
+                            int nuevaVersion = (int)(version.version_data + 1);
+
+                            var unchangedElements = dataTableOfSources.Except(changes.Select(change => change.Destination));
+                            foreach (var unchangedElement in unchangedElements)
+                            {
+                                unchangedElement.version_data = nuevaVersion;
+                                unchangedElement.fecha_version = DateTime.Today;
+                            }
+
+                            foreach (var change in changes)
+                            {
+                                var existingRecords = dataTableOfSources
+                                    .Where(x => x.DocEntry == change.Destination.DocEntry)
+                                    .OrderByDescending(x => x.version_data)
+                                    .FirstOrDefault();
+
+                                if (existingRecords != null)
+                                {
+                                    existingRecords.Valida_Picking = change.Source.Valida_Picking;
+                                    existingRecords.Valida_Packing = change.Source.Valida_Packing;
+                                    existingRecords.Paqueteria = change.Source.Paqueteria;
+                                    existingRecords.Prioridad = change.Source.Prioridad;
+                                    existingRecords.Rotulo = change.Source.Rotulo;
+                                    existingRecords.version_data = nuevaVersion;
+                                    existingRecords.fecha_version = DateTime.Today;
+                                    // Marcar el objeto como modificado
+                                    db_des.Entry(existingRecords).State = EntityState.Modified;
+                                }
+                            }
+
+                            db_des.Re_Data_Reference.AddRange(elementsToAdd);
+                            db_des.Re_Data_Reference.RemoveRange(elementsToDelete);
+
+                            db_des.SaveChanges();
+
+                            response.version = nuevaVersion;
+                            response.fecha = DateTime.Today.ToString("dd-MM-yyyy");
+                        }
+                        else
+                        {
+                            response.version = version.version_data.Value;
+                            response.fecha = version.fecha_version.Value.ToString("dd-MM-yyyy");
+                        }
+                    }
+
+                    string mensaje = hayCambios ? "Se detectaron cambios." : "No hay cambios.";
+                    return response;
+                }
             }
             catch (Exception ex)
             {
@@ -223,12 +275,13 @@ namespace Tests
         {
             try
             {
-                timer?.Dispose();
-                File.AppendAllText(logFilePath, $"{DateTime.Now}: La tarea se ha detenido con éxito.\r\n");
+                // Cambiar el tiempo de espera a Timeout.Infinite para deshabilitar futuras invocaciones
+                timer.Change(Timeout.Infinite, Timeout.Infinite);
+                AgregarRegistro("Servicio detenido con éxito.");
             }
             catch (Exception ex)
             {
-                File.AppendAllText(logFilePath, $"{DateTime.Now}: Ocurrió un error al detener el servicio: {ex.Message}\r\n{ex.StackTrace}\r\n");
+                AgregarRegistro($"Error al detener el servicio: {ex.Message}\r\n");
             }
         }
         #endregion

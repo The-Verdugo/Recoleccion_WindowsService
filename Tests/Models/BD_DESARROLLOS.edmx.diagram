@@ -6,6 +6,7 @@
     <edmx:Diagrams>
       <Diagram DiagramId="798dfe56ef4545e09f52a4e7dee765bc" Name="Diagram1">
         <EntityTypeShape EntityType="DesarrollosGVIModel.Re_Data_Reference" Width="1.5" PointX="0.75" PointY="0.75" IsExpanded="true" />
+        <EntityTypeShape EntityType="DesarrollosGVIModel.RE_TABLE_DATA" Width="1.875" PointX="3.25" PointY="1" IsExpanded="true" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>

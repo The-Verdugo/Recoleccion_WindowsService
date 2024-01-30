@@ -10,22 +10,20 @@
 namespace Tests.Models
 {
     using System;
-    using System.Collections.Generic;
     
-    public partial class Re_Data_Reference
+    public partial class fn_API_Get_DataRecoleccion_Result
     {
-        public int id { get; set; }
         public int DocEntry { get; set; }
         public string Factura { get; set; }
         public string DesAlmDes { get; set; }
         public string U_CardName { get; set; }
         public Nullable<System.DateTime> CreateDate { get; set; }
         public string Valida_Picking { get; set; }
-        public Nullable<int> Rotulo { get; set; }
+        public string Valida_Packing { get; set; }
+        public Nullable<short> Rotulo { get; set; }
         public string Paqueteria { get; set; }
         public Nullable<int> Prioridad { get; set; }
-        public Nullable<int> version_data { get; set; }
-        public Nullable<System.DateTime> fecha_version { get; set; }
-        public string Valida_Packing { get; set; }
+        public int version_data { get; set; }
+        public System.DateTime fecha_version { get; set; }
     }
 }

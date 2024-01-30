@@ -41,8 +41,9 @@ namespace Tests
             // 
             // serviceInstaller1
             // 
-            this.serviceInstaller1.Description = "Servicio utilizado para la sincronizacion de SQL Server con Firebase Real Time";
-            this.serviceInstaller1.ServiceName = "Servicio de Recoleccion";
+            this.serviceInstaller1.Description = "Servicio utilizado para deteccion de cambios en API de recoleccion en tiempo real" +
+    ".";
+            this.serviceInstaller1.ServiceName = "Servicio APP Recoleccion";
             this.serviceInstaller1.AfterInstall += new System.Configuration.Install.InstallEventHandler(this.serviceInstaller1_AfterInstall);
             // 
             // ProjectInstaller

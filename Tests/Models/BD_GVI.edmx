@@ -5,6 +5,26 @@
     <!-- SSDL content -->
     <edmx:StorageModels>
     <Schema Namespace="GVIModel.Store" Provider="System.Data.SqlClient" ProviderManifestToken="2008" Alias="Self" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+        <Function Name="fn_API_Get_DataRecoleccion" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
+          <ReturnType>
+            <CollectionType>
+              <RowType>
+                <Property Name="DocEntry" Type="int" Nullable="false" />
+                <Property Name="Factura" Type="nvarchar" MaxLength="100" />
+                <Property Name="DesAlmDes" Type="nvarchar" MaxLength="111" />
+                <Property Name="U_CardName" Type="nvarchar" MaxLength="100" />
+                <Property Name="CreateDate" Type="datetime" />
+                <Property Name="Valida_Picking" Type="varchar" MaxLength="2" Nullable="false" />
+                <Property Name="Valida_Packing" Type="varchar" MaxLength="2" Nullable="false" />
+                <Property Name="Rotulo" Type="smallint" />
+                <Property Name="Paqueteria" Type="nvarchar" MaxLength="50" />
+                <Property Name="Prioridad" Type="int" />
+                <Property Name="version_data" Type="int" Nullable="false" />
+                <Property Name="fecha_version" Type="datetime" Nullable="false" />
+              </RowType>
+            </CollectionType>
+          </ReturnType>
+        </Function>
         <Function Name="fn_API_Get_DataSource" Aggregate="false" BuiltIn="false" NiladicFunction="false" IsComposable="true" ParameterTypeSemantics="AllowImplicitConversion" Schema="dbo">
           <ReturnType>
             <CollectionType>
@@ -60,6 +80,7 @@
         <EntityContainer Name="GVIEntities" annotation:LazyLoadingEnabled="true">
           <FunctionImport Name="fn_API_GetData" IsComposable="true" ReturnType="Collection(GVIModel.fn_API_GetData_Result)" />
           <FunctionImport Name="fn_API_Get_DataSource" IsComposable="true" ReturnType="Collection(GVIModel.fn_API_Get_DataSource_Result)" />
+          <FunctionImport Name="fn_API_Get_DataRecoleccion" IsComposable="true" ReturnType="Collection(GVIModel.fn_API_Get_DataRecoleccion_Result)" />
         </EntityContainer>
         <ComplexType Name="fn_API_Get_DataSource_Result">
           <Property Type="Int32" Name="DocEntry" Nullable="false" />
@@ -68,6 +89,20 @@
           <Property Type="String" Name="U_CardName" Nullable="true" MaxLength="100" />
           <Property Type="DateTime" Name="CreateDate" Nullable="true" Precision="23" />
           <Property Type="String" Name="Valida_Picking" Nullable="false" MaxLength="2" />
+          <Property Type="Int16" Name="Rotulo" Nullable="true" />
+          <Property Type="String" Name="Paqueteria" Nullable="true" MaxLength="50" />
+          <Property Type="Int32" Name="Prioridad" Nullable="true" />
+          <Property Type="Int32" Name="version_data" Nullable="false" />
+          <Property Type="DateTime" Name="fecha_version" Nullable="false" Precision="23" />
+        </ComplexType>
+        <ComplexType Name="fn_API_Get_DataRecoleccion_Result">
+          <Property Type="Int32" Name="DocEntry" Nullable="false" />
+          <Property Type="String" Name="Factura" Nullable="true" MaxLength="100" />
+          <Property Type="String" Name="DesAlmDes" Nullable="true" MaxLength="111" />
+          <Property Type="String" Name="U_CardName" Nullable="true" MaxLength="100" />
+          <Property Type="DateTime" Name="CreateDate" Nullable="true" Precision="23" />
+          <Property Type="String" Name="Valida_Picking" Nullable="false" MaxLength="2" />
+          <Property Type="String" Name="Valida_Packing" Nullable="false" MaxLength="2" />
           <Property Type="Int16" Name="Rotulo" Nullable="true" />
           <Property Type="String" Name="Paqueteria" Nullable="true" MaxLength="50" />
           <Property Type="Int32" Name="Prioridad" Nullable="true" />
@@ -104,6 +139,24 @@
                 <ScalarProperty Name="U_CardName" ColumnName="U_CardName" />
                 <ScalarProperty Name="CreateDate" ColumnName="CreateDate" />
                 <ScalarProperty Name="Valida_Picking" ColumnName="Valida_Picking" />
+                <ScalarProperty Name="Rotulo" ColumnName="Rotulo" />
+                <ScalarProperty Name="Paqueteria" ColumnName="Paqueteria" />
+                <ScalarProperty Name="Prioridad" ColumnName="Prioridad" />
+                <ScalarProperty Name="version_data" ColumnName="version_data" />
+                <ScalarProperty Name="fecha_version" ColumnName="fecha_version" />
+              </ComplexTypeMapping>
+            </ResultMapping>
+          </FunctionImportMapping>
+          <FunctionImportMapping FunctionImportName="fn_API_Get_DataRecoleccion" FunctionName="GVIModel.Store.fn_API_Get_DataRecoleccion">
+            <ResultMapping>
+              <ComplexTypeMapping TypeName="GVIModel.fn_API_Get_DataRecoleccion_Result">
+                <ScalarProperty Name="DocEntry" ColumnName="DocEntry" />
+                <ScalarProperty Name="Factura" ColumnName="Factura" />
+                <ScalarProperty Name="DesAlmDes" ColumnName="DesAlmDes" />
+                <ScalarProperty Name="U_CardName" ColumnName="U_CardName" />
+                <ScalarProperty Name="CreateDate" ColumnName="CreateDate" />
+                <ScalarProperty Name="Valida_Picking" ColumnName="Valida_Picking" />
+                <ScalarProperty Name="Valida_Packing" ColumnName="Valida_Packing" />
                 <ScalarProperty Name="Rotulo" ColumnName="Rotulo" />
                 <ScalarProperty Name="Paqueteria" ColumnName="Paqueteria" />
                 <ScalarProperty Name="Prioridad" ColumnName="Prioridad" />

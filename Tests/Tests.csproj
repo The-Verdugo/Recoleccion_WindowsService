@@ -145,10 +145,16 @@
     <Compile Include="Models\fn_API_GetData_Result.cs">
       <DependentUpon>BD_GVI.tt</DependentUpon>
     </Compile>
+    <Compile Include="Models\fn_API_Get_DataRecoleccion_Result.cs">
+      <DependentUpon>BD_GVI.tt</DependentUpon>
+    </Compile>
     <Compile Include="Models\fn_API_Get_DataSource_Result.cs">
       <DependentUpon>BD_GVI.tt</DependentUpon>
     </Compile>
     <Compile Include="Models\Re_Data_Reference.cs">
+      <DependentUpon>BD_DESARROLLOS.tt</DependentUpon>
+    </Compile>
+    <Compile Include="Models\RE_TABLE_DATA.cs">
       <DependentUpon>BD_DESARROLLOS.tt</DependentUpon>
     </Compile>
     <Compile Include="ProjectInstaller.cs">

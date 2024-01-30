@@ -26,5 +26,6 @@ namespace Tests.Models
         }
     
         public virtual DbSet<Re_Data_Reference> Re_Data_Reference { get; set; }
+        public virtual DbSet<RE_TABLE_DATA> RE_TABLE_DATA { get; set;}
     }
 }

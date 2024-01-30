@@ -39,5 +39,11 @@ namespace Tests.Models
         {
             return ((IObjectContextAdapter)this).ObjectContext.CreateQuery<fn_API_Get_DataSource_Result>("[GVIEntities].[fn_API_Get_DataSource]()");
         }
+    
+        [DbFunction("GVIEntities", "fn_API_Get_DataRecoleccion")]
+        public virtual IQueryable<fn_API_Get_DataRecoleccion_Result> fn_API_Get_DataRecoleccion()
+        {
+            return ((IObjectContextAdapter)this).ObjectContext.CreateQuery<fn_API_Get_DataRecoleccion_Result>("[GVIEntities].[fn_API_Get_DataRecoleccion]()");
+        }
     }
 }
