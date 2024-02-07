@@ -103,7 +103,9 @@ namespace Tests
             try
             {
                 bool hayCambios = false;
+
                 ResponseVersion response = new ResponseVersion();
+
                 using (var db_des = new DesarrollosGVIEntities())
                 {
                     var version = db_des.Re_Data_Reference
@@ -114,7 +116,7 @@ namespace Tests
                     {
                         var existingKeys = db_des.Re_Data_Reference.Select(r => r.DocEntry).ToList();
 
-                        var sourceDataList = db_des.RE_TABLE_DATA
+                        var sourceDataList = db.fn_API_Get_DataRecoleccion()
                             .Select(source => new Re_Data_Reference
                             {
                                 id = 0,
@@ -208,8 +210,8 @@ namespace Tests
                             .ToList();
 
                         var elementsToDelete = dataTableOfSources
-                            .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry || source.version_data != version.version_data))
-                            .ToList();
+                        .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry))
+                        .ToList();
 
                         hayCambios = changes.Any() || elementsToAdd.Any() || elementsToDelete.Any();
 

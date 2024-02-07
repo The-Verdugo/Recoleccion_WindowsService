@@ -1,16 +1,11 @@
 ﻿using FireSharp;
 using FireSharp.Config;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.Data.Entity;
-using System.Drawing;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using Tests.Clases;
 using Tests.Models;
@@ -108,7 +103,7 @@ namespace Tests
                     {
                         var existingKeys = db_des.Re_Data_Reference.Select(r => r.DocEntry).ToList();
                  
-                        var sourceDataList = db_des.RE_TABLE_DATA.ToList()
+                        var sourceDataList = db.fn_API_Get_DataRecoleccion()
                             .Select(source => new Re_Data_Reference
                             {
                                 id = 0,
@@ -169,7 +164,7 @@ namespace Tests
                         db_des.Re_Data_Reference.RemoveRange(recordsToDelete);
                         db_des.SaveChanges();
 
-                        var dataFromQuery = db.fn_API_Get_DataRecoleccion().ToList();
+                        var dataFromQuery = db_des.RE_TABLE_DATA.ToList();
                         var dataTableOfSources = db_des.Re_Data_Reference.ToList();
 
                         var changes = dataFromQuery
@@ -202,8 +197,8 @@ namespace Tests
                             .ToList();
 
                         var elementsToDelete = dataTableOfSources
-                            .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry || source.version_data != version.version_data))
-                            .ToList();
+                        .Where(destination => !dataFromQuery.Any(source => source.DocEntry == destination.DocEntry))
+                        .ToList();
 
                         hayCambios = changes.Any() || elementsToAdd.Any() || elementsToDelete.Any();
 
